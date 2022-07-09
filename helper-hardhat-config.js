@@ -22,5 +22,12 @@ const networkConfig = {
 };
 
 const developmentChains = ["hardhat", "localhost"];
+const WETH_TOKEN_ADDRESS = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
+const AMOUNT = ethers.utils.parseEther("0.0001");
 
-module.exports = { networkConfig, developmentChains };
+module.exports = {
+  networkConfig,
+  developmentChains,
+  WETH_TOKEN_ADDRESS,
+  AMOUNT,
+};
