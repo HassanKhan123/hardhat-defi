@@ -1,5 +1,10 @@
 const { getNamedAccounts, ethers } = require("hardhat");
-const { WETH_TOKEN_ADDRESS, AMOUNT } = require("../helper-hardhat-config");
+const {
+  WETH_TOKEN_ADDRESS,
+  AMOUNT,
+  DAI_ETH_PRICE_FEED,
+  DAI_TOKEN_ADDRESS,
+} = require("../helper-hardhat-config");
 
 const { getWeth } = require("./getWeth");
 
@@ -12,6 +17,27 @@ const main = async () => {
   console.log("DEPOSITNG");
   await lendingPool.deposit(WETH_TOKEN_ADDRESS, AMOUNT, deployer, 0);
   console.log("DEPOSITED");
+  let { availableBorrowsETH, totalDebtETH } = await getBorrowUserData(
+    lendingPool,
+    deployer
+  );
+
+  const daiPrice = await getDaiPrice();
+
+  // 0.95 -----> only borrow 95% of the available borrows
+  const amountDaiToBorrow =
+    availableBorrowsETH.toString() * 0.95 * (1 / daiPrice.toNumber());
+  console.log(`You can borrow ${amountDaiToBorrow} DAI`);
+  const amountDaiToBorrowWei = ethers.utils.parseEther(
+    amountDaiToBorrow.toString()
+  );
+  await borrowDai(
+    DAI_TOKEN_ADDRESS,
+    lendingPool,
+    amountDaiToBorrowWei,
+    deployer
+  );
+  await getBorrowUserData(lendingPool, deployer);
 };
 
 const getLendingPool = async account => {
@@ -48,6 +74,44 @@ const approveErc20 = async (
   const tx = await erc20Token.approve(spenderAddress, amountToSpend);
   await tx.wait(1);
   console.log("Approved!");
+};
+
+const getBorrowUserData = async (lendingPool, account) => {
+  const { totalCollateralETH, totalDebtETH, availableBorrowsETH } =
+    await lendingPool.getUserAccountData(account);
+
+  console.log(`You have ${totalCollateralETH} worth of ETH deposited`);
+  console.log(`You have ${totalDebtETH} worth of ETH borrowed`);
+  console.log(`You can borrow ${availableBorrowsETH} worth of ETH `);
+
+  return { availableBorrowsETH, totalDebtETH };
+};
+
+const getDaiPrice = async () => {
+  const daiEthPriceFeed = await ethers.getContractAt(
+    "AggregatorV3Interface",
+    DAI_ETH_PRICE_FEED
+  );
+  const price = (await daiEthPriceFeed.latestRoundData())[1];
+  console.log("The DAI/ETH price is", price.toString());
+  return price;
+};
+
+const borrowDai = async (
+  daiAddress,
+  lendingPool,
+  amountDaiToBorrowWei,
+  account
+) => {
+  const borrowTx = await lendingPool.borrow(
+    daiAddress,
+    amountDaiToBorrowWei,
+    1,
+    0,
+    account
+  );
+  borrowTx.wait(1);
+  console.log("You have borrowed!!");
 };
 
 main()
