@@ -38,6 +38,8 @@ const main = async () => {
     deployer
   );
   await getBorrowUserData(lendingPool, deployer);
+  await repay(amountDaiToBorrowWei, DAI_TOKEN_ADDRESS, lendingPool, deployer);
+  await getBorrowUserData(lendingPool, deployer);
 };
 
 const getLendingPool = async account => {
@@ -112,6 +114,13 @@ const borrowDai = async (
   );
   borrowTx.wait(1);
   console.log("You have borrowed!!");
+};
+
+const repay = async (amount, daiAddress, lendingPool, account) => {
+  await approveErc20(daiAddress, lendingPool.address, amount, account);
+  const repayTx = await lendingPool.repay(daiAddress, amount, 1, account);
+  await repayTx.wait(1);
+  console.log("Repayed");
 };
 
 main()
